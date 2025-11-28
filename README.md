@@ -43,12 +43,20 @@ Hyperparameters are defined in a semicolon-separated CSV file.
 Example (param_space.csv):
 
 name;type;low;high;log;choices;default
+
 lr;float;1e-5;1e-2;True;;
+
 weight_decay;float;1e-6;1e-2;True;;
+
 hidden_size;int;16;256;False;;
+
 dropout;float;0.0;0.5;False;;
-optimizer;categorical;;;;"adam,adamw,sgd";
+
+optimizer;categorical;;;;adam,adamw,sgd;
+
 gamma;float;0.90;0.999;False;;
+
+
 
 Columns:
 | Column         | Description                                    |
