@@ -1,27 +1,46 @@
 Bayesian Optimization Framework (Optuna + CSV-Defined Search Spaces)
 
-This repository provides a lightweight, fully generic Bayesian hyperparameter optimization framework built on Optuna.
-It lets you:
+This repository provides a lightweight, generic framework for running Bayesian hyperparameter optimization using Optuna.
+Its core idea is simple:
 
-Define your hyperparameter search space in a simple CSV file
+Define your hyperparameter search space in a CSV file
 
-Plug in any Python function (run_model) that returns a scalar loss
+Implement any black-box function (run_model) that returns a scalar loss
 
-Run Bayesian optimization (TPE sampler, optionally multivariate)
+Run optimization using a TPE sampler
 
-Automatically log all trials to CSV
+Automatically log all trials to CSV for reproducibility
 
-Use the included toy and PyTorch examples to get started quickly
+The system is model-agnostic and works with any Python code—machine learning or otherwise.
 
-The design goal is to make hyperparameter tuning transparent, reproducible, and model-agnostic.
+Features
 
-Quick Start
-1. Install dependencies
+CSV-based hyperparameter search space
+
+Optuna TPE optimization (supports multivariate mode)
+
+Automatic logging of all trials to history CSV files
+
+Plug-and-play black-box objective functions
+
+Example implementations included:
+
+Deterministic toy objective
+
+PyTorch regression model
+
+Installation
+
+Install required packages:
+
 pip install optuna torch numpy pandas
 
-2. Define your search space (CSV)
+If you’re not using the PyTorch example, you may omit torch.
 
-Create a file such as param_space.csv:
+Defining the Search Space
+
+Hyperparameters are defined in a semicolon-separated CSV file.
+Example (param_space.csv):
 
 name;type;low;high;log;choices;default
 lr;float;1e-5;1e-2;True;;
@@ -31,29 +50,36 @@ dropout;float;0.0;0.5;False;;
 optimizer;categorical;;;;"adam,adamw,sgd";
 gamma;float;0.90;0.999;False;;
 
+Columns:
+| Column         | Description                                    |
+| -------------- | ---------------------------------------------- |
+| `name`         | Hyperparameter name passed to your `run_model` |
+| `type`         | `float`, `int`, `categorical`, or `bool`       |
+| `low` / `high` | Numeric range (for float/int types)            |
+| `log`          | Whether to sample on a log scale               |
+| `choices`      | For categorical parameters                     |
+| `default`      | Optional fallback when not suggested           |
 
-Each row declares one hyperparameter.
-The framework parses this and automatically uses the appropriate Optuna sampling method.
+The optimizer will automatically convert each row into the appropriate Optuna trial.suggest_* call.
 
-3. Write your black-box function (run_model)
+Implementing the Black-Box Function
 
-You can provide any function as long as it returns a numeric loss:
+You provide any function that returns a scalar loss:
 
 def run_model(**params):
-    # Train a model, evaluate it, or run *anything*
+    # Train a model, evaluate it, or run any computation
     loss = ...
     return loss
 
+Two example implementations are included:
 
-Examples included in the repo:
+toy_black_box.py – deterministic objective with a known optimum
 
-toy_black_box.py — deterministic toy objective
+test_black_box.py – PyTorch neural network training example
 
-test_black_box.py — simple PyTorch regression model
+Running Optimization
 
-4. Run optimization
-
-In your script:
+Example script:
 
 from general_bayes_opt import bayesian_optimize
 from toy_black_box import run_model
@@ -64,134 +90,85 @@ study, df = bayesian_optimize(
     n_trials=100,
 )
 
-
 This will:
 
-Read the CSV-defined search space
+Read the CSV search space
 
-Create a TPE-based Optuna study
+Create an Optuna TPE study
 
 Suggest parameter sets
 
 Evaluate run_model
 
-Log every trial into a CSV (default: bayes_trials.csv)
+Write all trials to bayes_trials.csv
 
 Return:
 
-study: the Optuna study object
+study (Optuna object)
 
-df: a pandas DataFrame containing all trial results
+df (pandas DataFrame of trial history)
 
-5. Inspect results
+Inspect the best result:
+
 print("Best params:", study.best_params)
 print("Best loss:", study.best_value)
 
+Example Use Cases
+Toy Optimization (default in main.py)
+
+Runs the optimizer on a handcrafted deterministic function to verify system behavior.
+Fast and reproducible.
+
+PyTorch Regression Example
+
+Uncomment the corresponding code in main.py to run the neural network example.
+This performs real training and tunes:
+
+Architecture (hidden size, dropout)
+
+Optimizer (Adam, AdamW, SGD)
+
+Learning rate, weight decay
+
+Scheduler gamma
+
+Logs results to trial_history.csv.
+
 Repository Structure
+
 .
-├── general_bayes_opt.py     # Core Bayesian optimization engine
+├── general_bayes_opt.py     # Core optimization engine
 ├── main.py                  # Example entry point
-├── toy_black_box.py         # Fast deterministic objective
-├── test_black_box.py        # PyTorch example black box
-├── param_space.csv          # Example search space definition
-├── bayes_trials.csv         # Trial history generated by toy example
-├── trial_history.csv        # Trial history for the PyTorch example
-
-How It Works
-1. CSV → Sampling Spec
-
-general_bayes_opt.py reads your CSV and converts each row into one of:
-
-trial.suggest_float
-
-trial.suggest_int
-
-trial.suggest_categorical
-
-trial.suggest_bool
-
-It automatically handles:
-
-log-scaled sampling
-
-lists of categorical values
-
-default values
-
-optional parameter overrides
-
-2. Bayesian Optimization (Optuna TPE)
-
-The optimizer uses a customizable TPE sampler:
-
-Supports good_fraction to control the top-percentile considered "good"
-
-Allows multivariate mode
-
-Uses n_startup_trials before TPE engages
-
-3. Logging
-
-After each trial:
-
-The full parameter set + loss are appended to a DataFrame
-
-The DataFrame is written to a CSV on disk
-
-This allows live monitoring, experiment reproducibility, and resumability
-
-Example: Toy Optimization (default in main.py)
-
-toy_black_box.py defines a deterministic loss centered around a “true” optimum.
-Running optimization should rapidly rediscover those values.
-
-This is a great sanity check for the optimizer pipeline.
-
-Example: Real Model (PyTorch)
-
-test_black_box.py demonstrates optimizing a small MLP on a synthetic regression task:
-
-Optimizes architecture (hidden_size, dropout)
-
-Optimizes optimizer choice and scheduler (optimizer, gamma)
-
-Combines MSE and MAE into a single loss
-
-Uncomment the relevant block in main.py to run it.
-
-Parameters in the CSV
-Column	Meaning
-name	Hyperparameter name passed to your run_model
-type	float, int, categorical, or bool
-low / high	Range for numeric parameters
-log	Whether to sample on a log scale
-choices	For categorical parameters (comma-separated or Python list)
-default	Optional fallback value
-
-Missing fields are auto-filled with safe defaults.
+├── toy_black_box.py         # Deterministic toy objective
+├── test_black_box.py        # PyTorch regression black-box
+├── param_space.csv          # Example search space
+├── bayes_trials.csv         # Trial history (toy example output)
+├── trial_history.csv        # Trial history (PyTorch example output)
 
 Extending the Framework
 
-You can:
+You can customize:
 
-Add new search spaces by editing the CSV
+The search space (via CSV)
 
-Replace run_model with your own training/prediction code
+The objective function (run_model)
 
-Customize TPE sampling behavior
+The TPE sampler settings
 
-Use Optuna’s advanced features (pruning, callbacks, etc.) by extending general_bayes_opt.py
+The logging process
 
-Add support for new parameter types or constraints
+Support for new parameter types
+
+This framework is intentionally simple so you can modify or embed it easily.
 
 Requirements
 
 Python 3.8+
-
-PyTorch (only for the PyTorch black-box example)
 
 Optuna
 
 Pandas
 
 Numpy
+
+PyTorch (only required for the PyTorch example)
