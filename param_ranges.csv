@@ -1,0 +1,7 @@
+name;type;low;high;log;choices;default
+lr;float;1e-5;1e-2;True;;0.001
+weight_decay;float;1e-6;1e-2;True;;0.0001
+hidden_size;int;16;256;False;;64
+dropout;float;0.0;0.5;False;;0.2
+optimizer;categorical;;;;adam,adamw,sgd;adamw
+gamma;float;0.90;0.999;False;;0.96
